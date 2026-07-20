@@ -424,12 +424,298 @@ extrêmes jusqu'à 98 — physiologiquement très improbables, signalées par
 )
 
 # ===========================================================================
+# Valeurs aberrantes et standardisation
+# ===========================================================================
+
+md(
+    """
+## 5. Valeurs aberrantes et justification de la standardisation
+
+Avant de modéliser, deux questions distinctes se posent — souvent confondues :
+
+1. **Y a-t-il des valeurs aberrantes ?** C'est-à-dire des valeurs *fausses*,
+   issues d'une erreur de saisie ou de mesure.
+2. **Faut-il standardiser ?** C'est-à-dire ramener les variables à une échelle
+   commune.
+
+La seconde ne découle pas de la première. Une variable peut être parfaitement
+propre et exiger malgré tout une standardisation, simplement parce que son
+échelle écrase celle des autres.
+"""
+)
+
+md(
+    """
+### 5.1 Boxplots par statut cardiaque
+"""
+)
+
+code(
+    """
+continues_box = ["bmi", "ment_hlth_days", "phys_hlth_days", "risk_factor_count"]
+titres_box = {
+    "bmi": "Indice de masse corporelle",
+    "ment_hlth_days": "Jours de mal-être mental",
+    "phys_hlth_days": "Jours de mal-être physique",
+    "risk_factor_count": "Nombre de facteurs de risque",
+}
+
+fig, axes = plt.subplots(1, 4, figsize=(15, 4.5))
+
+for ax, colonne in zip(axes, continues_box):
+    donnees = [
+        df.loc[df.heart_disease == 0, colonne],
+        df.loc[df.heart_disease == 1, colonne],
+    ]
+    boite = ax.boxplot(
+        donnees, labels=["Non atteints", "Atteints"], patch_artist=True,
+        widths=0.55, flierprops={"marker": ".", "markersize": 2, "alpha": 0.25},
+        medianprops={"color": "black", "linewidth": 1.6},
+    )
+    for patch, couleur in zip(boite["boxes"], [BLEU, ROUGE]):
+        patch.set_facecolor(couleur)
+        patch.set_alpha(0.65)
+    ax.set_title(titres_box[colonne], fontsize=10)
+    ax.tick_params(axis="x", labelsize=9)
+
+plt.suptitle("Distribution des variables continues selon le statut cardiaque",
+             y=1.02, fontsize=12)
+plt.tight_layout()
+enregistrer("09_boxplots_par_statut")
+plt.show()
+"""
+)
+
+md(
+    """
+Lecture des boîtes :
+
+- **IMC** — les deux distributions se recouvrent très largement (médianes 27 et
+  28). Les points isolés montent jusqu'à 98. Pris seul, l'IMC sépare mal les deux
+  groupes, ce qui confirme la faible corrélation observée au §8.
+- **Jours de mal-être mental** — les deux groupes sont concentrés sur zéro
+  (Q1 = médiane = 0 dans les deux cas, Q3 = 2 contre 4). L'écart existe mais reste
+  ténu.
+- **Jours de mal-être physique** — c'est le contraste le plus frappant du
+  graphique. Chez les non atteints, la boîte est écrasée (Q1 = médiane = 0,
+  Q3 = 2). Chez les atteints, elle s'étale de 0 à 20, avec une médiane à 2. Un
+  quart des personnes atteintes déclarent au moins 20 jours de souffrance
+  physique sur 30.
+- **Facteurs de risque** — séparation nette et lisible : médiane 2 contre 3,
+  boîtes largement décalées. La variable dérivée sépare mieux que n'importe
+  laquelle des variables brutes.
+"""
+)
+
+md(
+    """
+### 5.2 Combien de valeurs sortent des bornes statistiques ?
+
+On applique deux règles classiques : la règle de l'**IQR** (hors de
+[Q1 − 1,5·IQR ; Q3 + 1,5·IQR]) et celle du **z-score** (|z| > 3).
+"""
+)
+
+code(
+    """
+def compter_aberrantes(serie):
+    \"\"\"Compte les valeurs hors bornes selon l'IQR et le z-score.\"\"\"
+    q1, q3 = serie.quantile([0.25, 0.75])
+    iqr = q3 - q1
+    hors_iqr = ((serie < q1 - 1.5 * iqr) | (serie > q3 + 1.5 * iqr)).sum()
+    ecart_type = serie.std()
+    hors_z = (((serie - serie.mean()).abs() / ecart_type) > 3).sum() if ecart_type else 0
+    return {
+        "Q1": q1, "médiane": serie.median(), "Q3": q3, "IQR": iqr,
+        "n hors IQR": hors_iqr, "% hors IQR": hors_iqr / len(serie) * 100,
+        "n |z|>3": hors_z, "% |z|>3": hors_z / len(serie) * 100,
+    }
+
+
+aberrantes = pd.DataFrame(
+    {c: compter_aberrantes(df[c]) for c in
+     ["bmi", "ment_hlth_days", "phys_hlth_days", "total_unhealthy_days"]}
+).T
+aberrantes.round(2)
+"""
+)
+
+code(
+    """
+# Pourquoi les deux règles divergent : où tombe le seuil de chaque méthode ?
+for colonne in ["bmi", "ment_hlth_days", "phys_hlth_days"]:
+    serie = df[colonne]
+    q1, q3 = serie.quantile([0.25, 0.75])
+    seuil_iqr = q3 + 1.5 * (q3 - q1)
+    seuil_z = serie.mean() + 3 * serie.std()
+    print(f"{colonne:22s} max observé = {serie.max():5.1f} | "
+          f"seuil IQR = {seuil_iqr:5.1f} | seuil z=3 : {seuil_z:5.1f}")
+"""
+)
+
+md(
+    """
+**Les deux règles se contredisent, et de façon spectaculaire.**
+
+Pour l'IMC, elles restent cohérentes : 3,88 % de valeurs hors IQR contre 1,17 %
+au-delà de 3 écarts-types — même ordre de grandeur.
+
+Pour `phys_hlth_days`, en revanche, la règle de l'IQR signale **16,14 %** de
+l'échantillon là où celle du z-score n'en signale **aucune** (0,00 %). Ce n'est
+pas une erreur de calcul : la variable est **bornée à 30 par le questionnaire**,
+et son seuil à 3 écarts-types dépasse 30. Aucune valeur ne peut donc être
+atteinte, tandis que le seuil de l'IQR tombe à 7,5 et coupe en pleine
+distribution légitime.
+
+**Conclusion : la notion même de « valeur aberrante » n'a pas de sens ici.** Ces
+variables sont bornées et à forte inflation de zéros ; les deux règles classiques
+supposent une distribution approximativement symétrique et non bornée. Appliquer
+l'IQR mécaniquement reviendrait à écarter environ 40 000 réponses parfaitement
+valides — précisément celles des personnes en souffrance, c'est-à-dire celles qui
+portent le signal recherché.
+"""
+)
+
+md(
+    """
+### 5.3 Valeurs extrêmes : erreurs ou réalité ?
+
+Il faut examiner ce que sont réellement ces valeurs plutôt que de leur appliquer
+un seuil aveugle.
+"""
+)
+
+code(
+    """
+print("--- IMC : queue haute de la distribution ---")
+print(df.bmi.quantile([0.95, 0.99, 0.999, 1.0]).round(1).to_string())
+print(f"\\nIMC > 60  : {(df.bmi > 60).sum():>6,} lignes  "
+      f"({(df.bmi > 60).mean()*100:.3f} %)  -> physiologiquement douteux")
+print(f"IMC > 80  : {(df.bmi > 80).sum():>6,} lignes  "
+      f"({(df.bmi > 80).mean()*100:.3f} %)  -> tres probablement errone")
+print(f"\\nPrevalence si IMC > 60 : {df.loc[df.bmi > 60, 'heart_disease'].mean()*100:.2f} %")
+print(f"Prevalence generale    : {df.heart_disease.mean()*100:.2f} %")
+
+print("\\n--- Jours de mal-etre : les valeurs a 30 ---")
+print(f"ment_hlth_days = 30 : {(df.ment_hlth_days == 30).sum():>6,} lignes "
+      f"({(df.ment_hlth_days == 30).mean()*100:.2f} %)")
+print(f"phys_hlth_days = 30 : {(df.phys_hlth_days == 30).sum():>6,} lignes "
+      f"({(df.phys_hlth_days == 30).mean()*100:.2f} %)")
+print(f"\\nPrevalence si phys_hlth_days = 30 : "
+      f"{df.loc[df.phys_hlth_days == 30, 'heart_disease'].mean()*100:.2f} %")
+"""
+)
+
+md(
+    """
+**Deux situations diamétralement opposées.**
+
+Les **IMC supérieurs à 60** (805 lignes, 0,32 %) sont physiologiquement très
+improbables — un IMC de 98 supposerait par exemple 285 kg pour 1,70 m. Fait
+révélateur : leur prévalence de maladie cardiaque est de **8,94 %**, soit
+*inférieure* à la moyenne générale de 9,42 %. S'il s'agissait de cas d'obésité
+extrême réels, on attendrait l'inverse — l'obésité massive majore le risque
+cardiaque. Cette absence de signal suggère du **bruit de saisie** plutôt que des
+mesures authentiques. Ils restent néanmoins **conservés et signalés** par
+`flag_bmi_extreme` : 0,32 % de l'échantillon ne pèsera pas sur l'apprentissage, et
+les supprimer serait une décision arbitraire que rien n'impose.
+
+Les **30 jours de mal-être** relèvent d'une tout autre logique : ce n'est pas une
+anomalie mais la **borne du questionnaire** — on ne peut pas déclarer plus de
+30 jours sur 30. Et le signal est massif : parmi les répondants déclarant 30 jours
+de souffrance physique, **23,86 % sont atteints**, contre 9,42 % en moyenne, soit
+2,5 fois plus. Ces observations sont **parmi les plus informatives du jeu de
+données**. Les traiter comme des valeurs aberrantes détruirait précisément ce
+qu'on cherche à modéliser.
+
+**Décision : aucune valeur n'est supprimée ni winsorisée.** Les extrêmes sont
+signalés, et les modèles robustes aux valeurs extrêmes (arbres, ensembles) seront
+privilégiés.
+"""
+)
+
+md(
+    """
+### 5.4 Comparaison des échelles : le vrai argument pour la standardisation
+"""
+)
+
+code(
+    """
+a_comparer = [
+    "bmi", "ment_hlth_days", "phys_hlth_days", "age_group", "gen_hlth",
+    "income", "education", "risk_factor_count", "high_bp", "smoker",
+]
+
+echelles = pd.DataFrame({
+    "min": df[a_comparer].min(),
+    "max": df[a_comparer].max(),
+    "étendue": df[a_comparer].max() - df[a_comparer].min(),
+    "moyenne": df[a_comparer].mean(),
+    "écart-type": df[a_comparer].std(),
+}).sort_values("étendue", ascending=False)
+
+echelles.round(2)
+"""
+)
+
+code(
+    """
+fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+
+axes[0].barh(echelles.index, echelles["étendue"], color=BLEU)
+axes[0].set_xlabel("Étendue (max - min)")
+axes[0].set_title("Avant standardisation : échelles très hétérogènes")
+axes[0].invert_yaxis()
+
+standardise = (df[a_comparer] - df[a_comparer].mean()) / df[a_comparer].std()
+etendues_std = (standardise.max() - standardise.min()).loc[echelles.index]
+axes[1].barh(etendues_std.index, etendues_std.values, color="#3D8B5F")
+axes[1].set_xlabel("Étendue après centrage-réduction")
+axes[1].set_title("Après standardisation : ordres de grandeur comparables")
+axes[1].invert_yaxis()
+
+plt.tight_layout()
+enregistrer("10_echelles_standardisation")
+plt.show()
+
+print(f"Rapport des etendues avant : {echelles['étendue'].max() / echelles['étendue'].min():.0f} pour 1")
+print(f"Rapport des etendues apres : {etendues_std.max() / etendues_std.min():.1f} pour 1")
+"""
+)
+
+md(
+    """
+Voilà l'argument décisif — et il **ne repose pas sur les valeurs aberrantes**.
+
+L'IMC s'étend sur 86 unités quand les indicateurs binaires n'en couvrent qu'une
+seule. Pour tout algorithme fondé sur une **distance** ou sur une **régularisation
+pénalisant l'amplitude des coefficients**, l'IMC écraserait mécaniquement les
+autres variables — non parce qu'il est plus informatif, mais parce qu'il est
+numériquement plus grand.
+
+| Famille de modèle | Standardisation | Raison |
+|---|---|---|
+| kNN, SVM | **Indispensable** | Fondés sur des distances euclidiennes |
+| Régression logistique (avec pénalisation) | **Nécessaire** | La pénalité L1/L2 dépend de l'échelle des coefficients |
+| Arbre de décision, forêt aléatoire, XGBoost | **Inutile** | Les seuils de découpe sont invariants par changement d'échelle monotone |
+
+**Décision retenue** : la standardisation est intégrée au `ColumnTransformer` du
+pipeline (module 04), **ajusté sur le jeu d'entraînement uniquement** puis
+appliqué au jeu de test — faute de quoi les statistiques du test fuiteraient dans
+l'apprentissage. Elle est conservée même pour les modèles à base d'arbres, où elle
+est neutre, afin que tous les modèles partagent exactement le même préprocessing
+et restent comparables.
+"""
+)
+
+# ===========================================================================
 # Prévalence par segment
 # ===========================================================================
 
 md(
     """
-## 5. Prévalence par segment
+## 6. Prévalence par segment
 
 C'est le cœur de l'analyse : quels profils sont les plus touchés ?
 """
@@ -576,7 +862,7 @@ d'arbres, capables de capturer ce type de non-linéarité.
 
 md(
     """
-## 6. Cumul des facteurs de risque
+## 7. Cumul des facteurs de risque
 
 `risk_factor_count` compte les facteurs de risque cardiovasculaire reconnus
 présents chez un répondant : hypertension, cholestérol élevé, tabagisme, AVC,
@@ -633,7 +919,7 @@ l'application web, où elle offre une lecture immédiate du risque.
 
 md(
     """
-## 7. Structure des corrélations
+## 8. Structure des corrélations
 """
 )
 
@@ -677,7 +963,7 @@ attendu : la plupart des variables sont binaires, et le coefficient de Pearson
 mesure mal les relations non linéaires comme la courbe en J de l'IMC.
 
 **Conséquence** : il ne faut pas conclure que ces variables sont peu informatives.
-Le cumul des facteurs (§6) montre au contraire un signal très net. Les modèles
+Le cumul des facteurs (§7) montre au contraire un signal très net. Les modèles
 non linéaires devraient nettement surpasser une régression logistique simple.
 
 **Aucune paire de variables explicatives n'est fortement corrélée entre elles**
@@ -691,7 +977,7 @@ non linéaires devraient nettement surpasser une régression logistique simple.
 
 md(
     """
-## 8. Comparaison des profils : atteints contre non atteints
+## 9. Comparaison des profils : atteints contre non atteints
 """
 )
 
@@ -750,7 +1036,7 @@ risque.
 
 md(
     """
-## 9. Synthèse
+## 10. Synthèse
 
 ### Qualité des données
 
