@@ -93,13 +93,13 @@ python explore_warehouse.py fact_respondent  # aperçu
 | Module | État |
 |---|---|
 | 00 — Documentation | 🔜 À faire |
-| 01 — ETL + EDA | 🔜 À faire |
-| 02 — Entrepôt de données | 🔜 À faire |
-| 03 — Power BI | 🔜 À faire |
+| 01 — ETL + EDA | ✅ Terminé |
+| 02 — Entrepôt de données | ✅ Terminé |
+| 03 — Power BI | 🚧 Guide et mesures prêts (`.pbix` à construire) |
 | 04 — Machine Learning | 🔜 À faire |
 | 08 — Data Mining | 🔜 À faire |
 | 05 — Application web | 🔜 À faire |
-| 06 — Rapport | 🔜 À faire |
+| 06 — Rapport | 🚧 Documentation ETL & EDA générée |
 | 07 — Présentation | 🔜 À faire |
 
 ## Livrables

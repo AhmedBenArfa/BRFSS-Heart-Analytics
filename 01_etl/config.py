@@ -107,62 +107,15 @@ BORNES = {
 }
 
 # ---------------------------------------------------------------------------
-# Codebook BRFSS 2015 — libellés lisibles
+# Classes d'IMC selon l'Organisation mondiale de la santé.
 #
-# Source : CDC, BRFSS 2015 Codebook. Ces libellés alimentent les dimensions de
-# l'entrepôt afin que Power BI affiche « 55-59 ans » et non « 9.0 ».
+# C'est une RÈGLE DE TRANSFORMATION (transform.py s'en sert pour dériver la
+# colonne bmi_class), elle reste donc dans l'ETL. Les libellés d'affichage des
+# dimensions, eux, vivent dans 02_data_warehouse/codebook.py.
+#
+# Bornes sous la forme (minimum inclus, maximum exclu, code, libellé).
 # ---------------------------------------------------------------------------
 
-LIBELLES_AGE = {
-    1: "18-24 ans",
-    2: "25-29 ans",
-    3: "30-34 ans",
-    4: "35-39 ans",
-    5: "40-44 ans",
-    6: "45-49 ans",
-    7: "50-54 ans",
-    8: "55-59 ans",
-    9: "60-64 ans",
-    10: "65-69 ans",
-    11: "70-74 ans",
-    12: "75-79 ans",
-    13: "80 ans et plus",
-}
-
-LIBELLES_EDUCATION = {
-    1: "Aucune scolarité",
-    2: "Primaire",
-    3: "Secondaire non achevé",
-    4: "Secondaire achevé",
-    5: "Supérieur non achevé",
-    6: "Diplômé du supérieur",
-}
-
-LIBELLES_INCOME = {
-    1: "Moins de 10 000 $",
-    2: "10 000 à 15 000 $",
-    3: "15 000 à 20 000 $",
-    4: "20 000 à 25 000 $",
-    5: "25 000 à 35 000 $",
-    6: "35 000 à 50 000 $",
-    7: "50 000 à 75 000 $",
-    8: "75 000 $ et plus",
-}
-
-LIBELLES_GENHLTH = {
-    1: "Excellente",
-    2: "Très bonne",
-    3: "Bonne",
-    4: "Moyenne",
-    5: "Mauvaise",
-}
-
-LIBELLES_SEX = {0: "Femme", 1: "Homme"}
-
-LIBELLES_DIABETES = {0: "Non", 1: "Prédiabète", 2: "Diabète"}
-
-# Classes d'IMC selon l'Organisation mondiale de la santé.
-# Bornes sous la forme (minimum inclus, maximum exclu).
 CLASSES_IMC = [
     (0.0, 18.5, 1, "Insuffisance pondérale"),
     (18.5, 25.0, 2, "Corpulence normale"),

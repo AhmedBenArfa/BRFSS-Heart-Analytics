@@ -13,6 +13,10 @@
 # et volontairement versionné pour garantir la reproductibilité du projet.
 !data/heart_disease_health_indicators_BRFSS2015.csv
 
+# Exports de l'entrepôt (CSV + Parquet) : régénérés par build_star_schema.py,
+# jamais versionnés. Le schéma reste décrit par create_star_schema.sql.
+02_data_warehouse/exports/
+
 # Modèles ML sauvegardés (souvent volumineux)
 *.pkl
 *.joblib
