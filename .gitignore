@@ -1,0 +1,75 @@
+# =========================================================
+# Données
+# =========================================================
+# Par défaut on exclut les fichiers de données volumineux ou dérivés...
+*.xlsx
+*.xls
+*.parquet
+*.db
+*.sqlite
+*.duckdb
+
+# ...mais le jeu de données source est public (CDC BRFSS 2015, via Kaggle)
+# et volontairement versionné pour garantir la reproductibilité du projet.
+!data/heart_disease_health_indicators_BRFSS2015.csv
+
+# Modèles ML sauvegardés (souvent volumineux)
+*.pkl
+*.joblib
+*.h5
+*.onnx
+
+# Fichiers Power BI (volumineux)
+*.pbix
+
+# =========================================================
+# Environnements et caches Python
+# =========================================================
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =========================================================
+# Fichiers d'environnement et secrets
+# =========================================================
+.env
+.env.local
+*.secret
+credentials.json
+
+# =========================================================
+# IDE / Système
+# =========================================================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# =========================================================
+# Assistants / outils locaux
+# =========================================================
+.claude/
+CLAUDE.md
+
+# =========================================================
+# Logs et sorties
+# =========================================================
+*.log
+logs/
+mlruns/
+outputs/
+
+# =========================================================
+# Application web déployée (Streamlit Cloud) — fichiers requis au runtime.
+# Exceptions ciblées aux règles *.parquet / *.joblib ci-dessus.
+# =========================================================
+!05_web_app/models/heart_model.joblib
+!05_web_app/data_sample/*.parquet
