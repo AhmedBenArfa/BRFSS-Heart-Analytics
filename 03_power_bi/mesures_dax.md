@@ -1,19 +1,33 @@
-# Mesures DAX
+# Mesures et colonnes DAX
 
-Ensemble des mesures à créer dans Power BI, à regrouper dans une table `_Mesures`.
+Éléments de calcul créés dans le rapport Power BI. Les mesures sont regroupées
+dans une table dédiée `_Mesures` ; les colonnes calculées vivent dans
+`fact_respondent`.
+
 La cible `heart_disease` est codée 0/1 : sa moyenne donne directement le taux de
 maladie, et sa somme le nombre de cas.
 
 ---
 
-## 1. Indicateurs de base
+## 1. Colonnes calculées (table `fact_respondent`)
+
+Créées via **Nouvelle colonne** (calcul ligne à ligne), et non « Nouvelle mesure ».
+
+```dax
+Statut cardiaque = IF ( fact_respondent[heart_disease] = 1, "Atteint", "Non atteint" )
+```
+> Libellé lisible pour les légendes et axes (anneau, barres par statut).
+
+Colonne de regroupement **`bmi (compartiments)`** : créée par l'interface
+(clic droit sur `bmi` → **Nouveau groupe** → type **Compartiment**, taille **2**).
+Sert d'axe pour l'histogramme de distribution de l'IMC.
+
+---
+
+## 2. Indicateurs de base
 
 ```dax
 Nb Repondants = COUNTROWS ( fact_respondent )
-```
-
-```dax
-Nb Cas Cardiaques = SUM ( fact_respondent[heart_disease] )
 ```
 
 ```dax
@@ -23,15 +37,11 @@ DIVIDE (
     COUNTROWS ( fact_respondent )
 )
 ```
-> Mettre en forme en pourcentage. C'est la mesure centrale du rapport.
-
-```dax
-Nb Cas Sains = [Nb Repondants] - [Nb Cas Cardiaques]
-```
+> Format **pourcentage**, 1 décimale. C'est la mesure centrale du rapport.
 
 ---
 
-## 2. Mesures de santé
+## 3. Mesures de santé
 
 ```dax
 IMC Moyen = AVERAGE ( fact_respondent[bmi] )
@@ -46,82 +56,77 @@ Jours Malaise Moyens = AVERAGE ( fact_respondent[total_unhealthy_days] )
 ```
 
 ```dax
+Taux Hypertension =
+DIVIDE ( SUM ( fact_respondent[high_bp] ), COUNTROWS ( fact_respondent ) )
+```
+
+---
+
+## 4. Mesures de comportement et d'accès aux soins
+
+Toutes à formater en **pourcentage**. Décrivent la population (page « Habitudes de
+vie »), indépendamment de la maladie.
+
+```dax
+Taux Fumeurs =
+DIVIDE ( SUM ( fact_respondent[smoker] ), COUNTROWS ( fact_respondent ) )
+```
+
+```dax
 Taux Activite Physique =
-DIVIDE (
-    SUM ( fact_respondent[phys_activity] ),
-    COUNTROWS ( fact_respondent )
-)
+DIVIDE ( SUM ( fact_respondent[phys_activity] ), COUNTROWS ( fact_respondent ) )
 ```
 
 ```dax
-Taux Diabete =
-DIVIDE (
-    CALCULATE (
-        COUNTROWS ( fact_respondent ),
-        fact_respondent[diabetes_key] = 2
-    ),
-    COUNTROWS ( fact_respondent )
-)
+Taux Consommation Fruits =
+DIVIDE ( SUM ( fact_respondent[fruits] ), COUNTROWS ( fact_respondent ) )
+```
+
+```dax
+Taux Consommation Legumes =
+DIVIDE ( SUM ( fact_respondent[veggies] ), COUNTROWS ( fact_respondent ) )
+```
+
+```dax
+Taux Acces Soins =
+DIVIDE ( SUM ( fact_respondent[has_care_access] ), COUNTROWS ( fact_respondent ) )
 ```
 
 ---
 
-## 3. Mesures comparatives
+## 5. Mesures comparatives (optionnelles)
+
+Non indispensables au rapport actuel, mais utiles pour enrichir l'analyse.
 
 ```dax
-Taux Maladie National = 
-CALCULATE (
-    [Taux Maladie Cardiaque],
-    ALL ( fact_respondent )
-)
+Taux Maladie National =
+CALCULATE ( [Taux Maladie Cardiaque], ALL ( fact_respondent ) )
 ```
-> Constante (~9,42 %). Sert de ligne de référence : dans un visuel filtré par
-> segment, comparer `[Taux Maladie Cardiaque]` (contextuel) à
-> `[Taux Maladie National]` (global).
+> Constante (~9,42 %). Ligne de référence : comparer le taux d'un segment filtré
+> à ce taux global.
 
 ```dax
-Ecart au National =
-[Taux Maladie Cardiaque] - [Taux Maladie National]
+Ecart au National = [Taux Maladie Cardiaque] - [Taux Maladie National]
 ```
-> Positif = segment sur-exposé, négatif = sous-exposé. Idéal en mise en forme
-> conditionnelle (rouge si positif).
+> Positif = segment sur-exposé. Idéal en mise en forme conditionnelle.
 
 ```dax
-Sur-risque =
-DIVIDE ( [Taux Maladie Cardiaque], [Taux Maladie National] )
+Sur-risque = DIVIDE ( [Taux Maladie Cardiaque], [Taux Maladie National] )
 ```
-> Rapport au risque moyen. Une valeur de 2,5 signifie « 2,5 fois le risque
-> national », lecture immédiate pour les segments extrêmes.
-
----
-
-## 4. Mesures dynamiques de titre
-
-```dax
-Titre Segment Le Plus Touche =
-VAR t =
-    TOPN (
-        1,
-        ADDCOLUMNS (
-            VALUES ( dim_age[tranche_age] ),
-            "@taux", [Taux Maladie Cardiaque]
-        ),
-        [@taux], DESC
-    )
-RETURN
-    "Tranche la plus touchée : "
-        & MAXX ( t, dim_age[tranche_age] )
-        & " (" & FORMAT ( MAXX ( t, [@taux] ), "0.0%" ) & ")"
-```
-> Titre dynamique pour la page « Vue d'ensemble ».
+> Rapport au risque moyen. « 2,5 » = 2,5 fois le risque national.
 
 ---
 
 ## Notes d'usage
 
-- Toutes les mesures de taux sont à formater en **pourcentage** (1 décimale).
-- `Taux Maladie Cardiaque` réagit automatiquement au contexte de filtre : posée
-  sur un axe `dim_age`, elle donne le taux par tranche d'âge ; combinée à un
-  segment, elle se recalcule.
-- Rappel : ces taux décrivent des **associations transversales**. Ne pas les
-  présenter comme des probabilités de survenue future.
+- Distinction fondamentale : une **mesure** agrège (SUM, AVERAGE, DIVIDE) et va
+  dans **Valeurs** ; une **colonne** se calcule par ligne et va dans **Axe /
+  Légende**. Créer `Statut cardiaque` en mesure déclenche l'erreur « impossible de
+  déterminer une valeur unique ».
+- Toutes les mesures de taux se formatent en **pourcentage** (onglet *Outils de
+  mesure* → *Format*).
+- `Taux Maladie Cardiaque` réagit au contexte de filtre : posée sur un axe
+  `dim_age`, elle donne le taux par tranche d'âge ; combinée à un segment, elle se
+  recalcule automatiquement.
+- Rappel : ces taux décrivent des **associations transversales**, pas des
+  probabilités de survenue future.

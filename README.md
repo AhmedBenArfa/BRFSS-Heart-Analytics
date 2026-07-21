@@ -95,7 +95,7 @@ python explore_warehouse.py fact_respondent  # aperçu
 | 00 — Documentation | 🔜 À faire |
 | 01 — ETL + EDA | ✅ Terminé |
 | 02 — Entrepôt de données | ✅ Terminé |
-| 03 — Power BI | 🚧 Guide et mesures prêts (`.pbix` à construire) |
+| 03 — Power BI | ✅ Terminé (rapport 6 pages, captures dans `03_power_bi/screenshots/`) |
 | 04 — Machine Learning | 🔜 À faire |
 | 08 — Data Mining | 🔜 À faire |
 | 05 — Application web | 🔜 À faire |

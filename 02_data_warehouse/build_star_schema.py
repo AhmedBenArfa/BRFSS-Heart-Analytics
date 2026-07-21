@@ -35,6 +35,31 @@ CLE_INCONNU = -1
 LIBELLE_INCONNU = "Inconnu"
 
 
+def _besoin_inconnu(conn: duckdb.DuckDBPyConnection, dim: dict) -> bool:
+    """Indique si une dimension a besoin du membre « Inconnu » (clé -1).
+
+    C'est le cas si la table analytique contient, pour la colonne concernée,
+    soit un code hors codebook, soit une valeur NULL — les deux étant rattachés
+    à -1 par le COALESCE de la table de faits. Sur des données propres
+    (contrôles qualité de l'ETL), aucune dimension n'en a besoin.
+    """
+    colonne = dim["colonne_fait"]
+    nb_null = conn.execute(
+        f"SELECT COUNT(*) FROM analytical_base WHERE {colonne} IS NULL"
+    ).fetchone()[0]
+    if nb_null:
+        return True
+
+    codes_data = {
+        r[0]
+        for r in conn.execute(
+            f"SELECT DISTINCT {colonne} FROM analytical_base "
+            f"WHERE {colonne} IS NOT NULL"
+        ).fetchall()
+    }
+    return bool(codes_data - set(dim["membres"].keys()))
+
+
 def peupler_dimensions(conn: duckdb.DuckDBPyConnection) -> None:
     """Crée et remplit chaque table de dimension à partir du codebook.
 
@@ -42,6 +67,11 @@ def peupler_dimensions(conn: duckdb.DuckDBPyConnection) -> None:
     qu'elles existent DÉJÀ peuplées pour construire la table de faits. On insère
     donc ici, puis le DDL ne fait que la jointure — on sépare les CREATE de
     dimension du CREATE de fait pour cette raison.
+
+    Le membre « Inconnu » (clé -1) n'est ajouté QUE si la table analytique
+    contient des codes hors codebook : inutile de polluer les segments Power BI
+    d'un membre vide quand les données sont propres. Le filet de sécurité reste
+    donc présent uniquement là où il sert réellement.
     """
     for dim in codebook.DIMENSIONS:
         table, cle, libelle = dim["table"], dim["cle"], dim["libelle"]
@@ -51,14 +81,15 @@ def peupler_dimensions(conn: duckdb.DuckDBPyConnection) -> None:
             f"CREATE TABLE {table} ({cle} INTEGER PRIMARY KEY, {libelle} VARCHAR NOT NULL)"
         )
 
-        # Membre « Inconnu » + tous les membres du codebook.
-        lignes = [(CLE_INCONNU, LIBELLE_INCONNU)]
-        lignes += [(code, texte) for code, texte in dim["membres"].items()]
+        lignes = [(code, texte) for code, texte in dim["membres"].items()]
+        if _besoin_inconnu(conn, dim):
+            lignes.insert(0, (CLE_INCONNU, LIBELLE_INCONNU))
 
         conn.executemany(
             f"INSERT INTO {table} ({cle}, {libelle}) VALUES (?, ?)", lignes
         )
-        print(f"  [dimension] {table:16s} {len(lignes):>3} membres")
+        marque = " (+ Inconnu)" if lignes[0][0] == CLE_INCONNU else ""
+        print(f"  [dimension] {table:16s} {len(lignes):>3} membres{marque}")
 
 
 def construire_faits(conn: duckdb.DuckDBPyConnection) -> None:
