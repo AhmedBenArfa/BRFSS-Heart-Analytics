@@ -493,6 +493,52 @@ def construire(meta: dict, res: dict) -> Rapport:
         couleur=BLEU,
     )
 
+    pdf.titre2("4.3 Pourquoi le ROC-AUC, et pas une autre métrique")
+    pdf.texte(
+        "Le choix du critère de sélection est une décision structurante : il "
+        "détermine quel modèle sera retenu. Trois candidats sérieux ont été pesés."
+    )
+    pdf.tableau(
+        ["Candidat", "Argument en sa faveur", "Raison de l'écarter"],
+        [
+            ["PR-AUC en principal", "Centré sur la minoritaire",
+             "Dépend de la prévalence"],
+            ["Rappel sous contrainte", "Colle au cas d'usage médical",
+             "Mélange modèle et seuil"],
+            ["F1", "Compromis précision / rappel", "Dépend du seuil choisi"],
+        ],
+        [46, 58, 61],
+        ["L", "L", "L"],
+    )
+    pdf.texte(
+        "Le ROC-AUC l'emporte pour trois raisons convergentes."
+    )
+    pdf.puce(
+        "**Il est indépendant du seuil.** Il évalue la capacité intrinsèque du "
+        "modèle à ordonner les individus par risque croissant, sans présupposer "
+        "une règle de décision. Or l'objectif du projet est précisément d'estimer "
+        "un risque, pas de poser un diagnostic binaire."
+    )
+    pdf.puce(
+        "**Il sépare proprement deux décisions distinctes.** Choisir un modèle et "
+        "choisir un seuil sont deux questions différentes (voir § 10.1). Une métrique "
+        "dépendante du seuil, comme le F1 ou le rappel, mêlerait les deux : on "
+        "sélectionnerait un modèle sur la base d'un seuil arbitraire de 0,5, qui "
+        "n'a aucune pertinence en contexte déséquilibré."
+    )
+    pdf.puce(
+        "**Il est stable et standard.** Peu sensible aux variations "
+        "d'échantillonnage et universellement compris."
+    )
+    pdf.encadre(
+        "La limite du ROC-AUC, assumée et compensée",
+        "Une critique légitime lui est adressée en contexte déséquilibré : "
+        "rapportant les faux positifs à une classe majoritaire nombreuse, il peut "
+        "sembler flatteur alors que la précision reste faible. C'est notre cas — un "
+        "ROC-AUC de 0,85 coexiste avec une précision de 27 %. D'où le PR-AUC en "
+        "arbitre, et le report systématique de la précision et du rappel.",
+    )
+
     # ================= 5. Erreur irréductible =================
     pdf.titre1("5. L'erreur irréductible : jusqu'où peut-on monter ?")
     pdf.texte(
