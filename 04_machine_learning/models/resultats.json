@@ -1,0 +1,242 @@
+{
+  "comparaison": [
+    {
+      "modèle": "XGBoost",
+      "ROC-AUC": 0.8498310335822395,
+      "PR-AUC": 0.3773231309321569,
+      "précision": 0.23947694423327243,
+      "rappel": 0.8153700788953582,
+      "F1": 0.3702150601412932,
+      "durée (s)": 33.5
+    },
+    {
+      "modèle": "Forêt aléatoire",
+      "ROC-AUC": 0.8478882581275047,
+      "PR-AUC": 0.3725066764513669,
+      "précision": 0.24865236483758238,
+      "rappel": 0.7855492787670211,
+      "F1": 0.37773426304955665,
+      "durée (s)": 45.3
+    },
+    {
+      "modèle": "Régression logistique",
+      "ROC-AUC": 0.8473787464200525,
+      "PR-AUC": 0.3720199329453719,
+      "précision": 0.24629748681459235,
+      "rappel": 0.7928210548590953,
+      "F1": 0.3758332383803952,
+      "durée (s)": 6.9
+    },
+    {
+      "modèle": "SVM linéaire",
+      "ROC-AUC": 0.847168142417855,
+      "PR-AUC": 0.37165634824864435,
+      "précision": 0.546347726175044,
+      "rappel": 0.12687022131736453,
+      "F1": 0.20587668942483855,
+      "durée (s)": 12.9
+    },
+    {
+      "modèle": "Arbre de décision",
+      "ROC-AUC": 0.8361065808314521,
+      "PR-AUC": 0.35133070844432573,
+      "précision": 0.2312035227677412,
+      "rappel": 0.7993084217328453,
+      "F1": 0.3586482291592611,
+      "durée (s)": 9.5
+    },
+    {
+      "modèle": "kNN",
+      "ROC-AUC": 0.8272535463423273,
+      "PR-AUC": 0.3271002049431653,
+      "précision": 0.6024622853302313,
+      "rappel": 0.030972166729425425,
+      "F1": 0.058898462021035915,
+      "durée (s)": 165.2
+    }
+  ],
+  "desequilibre": [
+    {
+      "stratégie": "Pondération",
+      "ROC-AUC": 0.8498310335822395,
+      "PR-AUC": 0.3773231309321569,
+      "précision": 0.23947694423327243,
+      "rappel": 0.8153700788953582,
+      "F1": 0.3702150601412932
+    },
+    {
+      "stratégie": "SMOTE",
+      "ROC-AUC": 0.8395700204852019,
+      "PR-AUC": 0.3531737627696473,
+      "précision": 0.3816747796145047,
+      "rappel": 0.38170890803453117,
+      "F1": 0.38161119624359463
+    }
+  ],
+  "meilleurs_parametres": {
+    "Régression logistique": {
+      "C": 10
+    },
+    "kNN": {
+      "n_neighbors": 50,
+      "weights": "uniform"
+    },
+    "Arbre de décision": {
+      "max_depth": 10,
+      "min_samples_leaf": 100
+    },
+    "Forêt aléatoire": {
+      "max_depth": 12,
+      "min_samples_leaf": 20
+    },
+    "XGBoost": {
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "reg_lambda": 5
+    },
+    "SVM linéaire": {}
+  },
+  "diagnostic": {
+    "ecart_train_val": [
+      {
+        "métrique": "ROC-AUC",
+        "entraînement": 0.8535217187076849,
+        "validation": 0.8498310335822395,
+        "écart": 0.0036906851254453477,
+        "écart relatif (%)": 0.43240670325687847
+      },
+      {
+        "métrique": "PR-AUC",
+        "entraînement": 0.3849334691582623,
+        "validation": 0.3773231309321569,
+        "écart": 0.0076103382261054064,
+        "écart relatif (%)": 1.97705287688987
+      }
+    ],
+    "courbe_validation": {
+      "profondeurs": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        8,
+        10
+      ],
+      "train": [
+        0.8464023847304002,
+        0.8506656517786533,
+        0.8535217187076849,
+        0.8572247546485237,
+        0.8716374038053081,
+        0.9018726700794113,
+        0.9406836434734742
+      ],
+      "validation": [
+        0.8460211467944699,
+        0.849135446723453,
+        0.8498310335822395,
+        0.8495920964086672,
+        0.8474303518477833,
+        0.8403363912509715,
+        0.8300704812852896
+      ],
+      "optimum": 3
+    },
+    "courbe_apprentissage": {
+      "tailles": [
+        16235,
+        45459,
+        74683,
+        103907,
+        133131,
+        162355
+      ],
+      "train": [
+        0.8736442626835512,
+        0.8593010082509792,
+        0.8570525960571913,
+        0.8548920882881312,
+        0.8540157470277314,
+        0.85351786665051
+      ],
+      "validation": [
+        0.8437993942824104,
+        0.8478626718343676,
+        0.8488776704536326,
+        0.8494985326033625,
+        0.8497744060331289,
+        0.8498335876733926
+      ]
+    }
+  },
+  "erreur_irreductible": {
+    "profils_distincts": 228705,
+    "profils_repetes": 11743,
+    "profils_ambigus": 1076,
+    "lignes_ambigues": 3714,
+    "erreur_mesuree_pct": 0.4521444339325134,
+    "part_profils_uniques_pct": 94.86543800966311
+  },
+  "test": {
+    "n": 50736,
+    "n_positifs": 4779,
+    "roc_auc": 0.8503142212830181,
+    "pr_auc": 0.3712414698111999,
+    "prevalence": 0.09419347209082309,
+    "seuil": 0.5762022137641907,
+    "rappel": 0.7501569365976145,
+    "precision": 0.26956914053688247,
+    "vrais_positifs": 3585,
+    "faux_negatifs": 1194,
+    "faux_positifs": 9714,
+    "vrais_negatifs": 36243
+  },
+  "shap_top": [
+    {
+      "variable": "age_group",
+      "importance SHAP": 0.7309547662734985
+    },
+    {
+      "variable": "gen_hlth",
+      "importance SHAP": 0.45662549138069153
+    },
+    {
+      "variable": "high_bp",
+      "importance SHAP": 0.38230013847351074
+    },
+    {
+      "variable": "sex",
+      "importance SHAP": 0.3587641716003418
+    },
+    {
+      "variable": "high_chol",
+      "importance SHAP": 0.3295385241508484
+    },
+    {
+      "variable": "smoker",
+      "importance SHAP": 0.17710693180561066
+    },
+    {
+      "variable": "stroke",
+      "importance SHAP": 0.13141675293445587
+    },
+    {
+      "variable": "diff_walk",
+      "importance SHAP": 0.12473928928375244
+    },
+    {
+      "variable": "diabetes",
+      "importance SHAP": 0.10314295440912247
+    },
+    {
+      "variable": "income",
+      "importance SHAP": 0.10268213599920273
+    }
+  ],
+  "modele_retenu": "XGBoost",
+  "strategie_desequilibre": "Pondération",
+  "reference_triviale": {
+    "exactitude_pct": 90.5806527909177
+  }
+}

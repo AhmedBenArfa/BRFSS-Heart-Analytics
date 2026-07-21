@@ -1085,9 +1085,84 @@ with open(config.METADONNEES, "w", encoding="utf-8") as f:
     json.dump(metadonnees, f, indent=2, ensure_ascii=False)
 
 taille = config.MODELE_FINAL.stat().st_size / 1024
-print(f"Modèle    : {config.MODELE_FINAL.name} ({taille:.0f} Ko)")
+print(f"Modèle      : {config.MODELE_FINAL.name} ({taille:.0f} Ko)")
 print(f"Métadonnées : {config.METADONNEES.name}")
-print(json.dumps(metadonnees, indent=2, ensure_ascii=False)[:600])
+print(json.dumps(metadonnees, indent=2, ensure_ascii=False)[:400])
+"""
+)
+
+md(
+    """
+### Export des résultats pour la documentation
+
+Toutes les mesures produites dans ce notebook sont exportées vers un fichier JSON.
+La documentation technique PDF le lit pour construire ses tableaux : aucun chiffre
+n'y est saisi à la main, et le document ne peut donc pas diverger de l'analyse.
+"""
+)
+
+code(
+    """
+resultats_complets = {
+    "comparaison": comparaison.to_dict(orient="records"),
+    "desequilibre": desequilibre.to_dict(orient="records"),
+    "meilleurs_parametres": {
+        nom: {k.replace("model__", ""): v
+              for k, v in est.named_steps["model"].get_params().items()
+              if k in ("max_depth", "learning_rate", "reg_lambda", "C",
+                       "n_neighbors", "weights", "min_samples_leaf")}
+        for nom, est in meilleurs.items()
+    },
+    "diagnostic": {
+        "ecart_train_val": diag.to_dict(orient="records"),
+        "courbe_validation": (
+            {"profondeurs": list(map(int, profondeurs)),
+             "train": [float(x) for x in tr.mean(axis=1)],
+             "validation": [float(x) for x in va.mean(axis=1)],
+             "optimum": int(optimal)}
+            if hasattr(modele_final, "max_depth") else None
+        ),
+        "courbe_apprentissage": {
+            "tailles": [int(x) for x in tailles],
+            "train": [float(x) for x in moy_train],
+            "validation": [float(x) for x in moy_val],
+        },
+    },
+    "erreur_irreductible": {
+        "profils_distincts": int(len(groupes)),
+        "profils_repetes": int(len(repetes)),
+        "profils_ambigus": int(len(ambigus)),
+        "lignes_ambigues": int(ambigus.n.sum()),
+        "erreur_mesuree_pct": float(erreurs / len(df) * 100),
+        "part_profils_uniques_pct": float(
+            (len(groupes) - len(repetes)) / len(groupes) * 100
+        ),
+    },
+    "test": {
+        "n": int(len(y_test)),
+        "n_positifs": int(y_test.sum()),
+        "roc_auc": float(roc_auc_test),
+        "pr_auc": float(pr_auc_test),
+        "prevalence": float(y_test.mean()),
+        "seuil": float(seuil),
+        "rappel": float(rapp_c[idx]),
+        "precision": float(prec_c[idx]),
+        "vrais_positifs": int(vp), "faux_negatifs": int(fn),
+        "faux_positifs": int(fp), "vrais_negatifs": int(vn),
+    },
+    "shap_top": importance.head(10).to_dict(orient="records"),
+    "modele_retenu": nom_meilleur,
+    "strategie_desequilibre": gagnante,
+    "reference_triviale": {
+        "exactitude_pct": float(accuracy_score(y_test, pred_triviale) * 100),
+    },
+}
+
+chemin_resultats = config.DOSSIER_MODELES / "resultats.json"
+with open(chemin_resultats, "w", encoding="utf-8") as f:
+    json.dump(resultats_complets, f, indent=2, ensure_ascii=False)
+
+print(f"Résultats exportés : {chemin_resultats.name}")
 """
 )
 
