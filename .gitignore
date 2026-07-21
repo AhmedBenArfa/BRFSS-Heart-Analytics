@@ -13,6 +13,11 @@
 # et volontairement versionné pour garantir la reproductibilité du projet.
 !data/heart_disease_health_indicators_BRFSS2015.csv
 
+# L'entrepôt lui-même est également versionné (données publiques, ~15 Mo) pour
+# qu'il soit ouvrable/interrogeable sans relancer l'ETL. Il reste néanmoins
+# entièrement régénérable : run_etl.py puis build_star_schema.py.
+!02_data_warehouse/heart.duckdb
+
 # Exports de l'entrepôt (CSV + Parquet) : régénérés par build_star_schema.py,
 # jamais versionnés. Le schéma reste décrit par create_star_schema.sql.
 02_data_warehouse/exports/
