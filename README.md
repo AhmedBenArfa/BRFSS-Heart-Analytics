@@ -92,7 +92,7 @@ python explore_warehouse.py fact_respondent  # aperçu
 
 | Module | État |
 |---|---|
-| 00 — Documentation | 🔜 À faire |
+| 00 — Documentation | ✅ Terminé (projet, données, démarche — MD + PDF) |
 | 01 — ETL + EDA | ✅ Terminé |
 | 02 — Entrepôt de données | ✅ Terminé |
 | 03 — Power BI | ✅ Terminé (rapport 6 pages, captures dans `03_power_bi/screenshots/`) |
