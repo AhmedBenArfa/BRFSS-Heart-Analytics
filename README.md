@@ -96,7 +96,7 @@ python explore_warehouse.py fact_respondent  # aperçu
 | 01 — ETL + EDA | ✅ Terminé |
 | 02 — Entrepôt de données | ✅ Terminé |
 | 03 — Power BI | ✅ Terminé (rapport 6 pages, captures dans `03_power_bi/screenshots/`) |
-| 04 — Machine Learning | 🔜 À faire |
+| 04 — Machine Learning | ✅ Terminé (XGBoost, ROC-AUC 0,850 sur test) |
 | 08 — Data Mining | ✅ Terminé (ACP, clustering k=4, CAH, t-SNE) |
 | 05 — Application web | 🔜 À faire |
 | 06 — Rapport | 🚧 Docs techniques ETL/EDA et Entrepôt/Power BI générées |

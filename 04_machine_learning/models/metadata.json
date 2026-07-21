@@ -1,0 +1,39 @@
+{
+  "modele": "XGBoost",
+  "strategie_desequilibre": "Pondération",
+  "variables": [
+    "bmi",
+    "ment_hlth_days",
+    "phys_hlth_days",
+    "gen_hlth",
+    "age_group",
+    "education",
+    "income",
+    "diabetes",
+    "high_bp",
+    "high_chol",
+    "chol_check",
+    "smoker",
+    "stroke",
+    "phys_activity",
+    "fruits",
+    "veggies",
+    "hvy_alcohol",
+    "any_healthcare",
+    "no_doc_cost",
+    "diff_walk",
+    "sex"
+  ],
+  "seuil_decision": 0.5762022137641907,
+  "rappel_cible": 0.75,
+  "performances_test": {
+    "roc_auc": 0.8503142212830181,
+    "pr_auc": 0.3712414698111999,
+    "rappel": 0.7501569365976145,
+    "precision": 0.26956914053688247
+  },
+  "prevalence_entrainement": 0.09418361715547147,
+  "n_entrainement": 202944,
+  "n_test": 50736,
+  "graine": 42
+}
