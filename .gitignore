@@ -23,8 +23,13 @@
 *.h5
 *.onnx
 
-# Fichiers Power BI (volumineux)
+# Fichiers Power BI (volumineux) — ignorés par défaut...
 *.pbix
+
+# ...mais le rapport du projet est versionné : données publiques (CDC/BRFSS),
+# taille modeste (~3,6 Mo), et cela rend le rapport directement ouvrable après
+# un simple clone.
+!03_power_bi/HeartDiseasePowerBI.pbix
 
 # =========================================================
 # Environnements et caches Python
