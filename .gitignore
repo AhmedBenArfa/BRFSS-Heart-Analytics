@@ -86,4 +86,5 @@ outputs/
 # Exceptions ciblées aux règles *.parquet / *.joblib ci-dessus.
 # =========================================================
 !05_web_app/models/heart_model.joblib
+!05_web_app/models/heart_model_base.joblib
 !05_web_app/data_sample/*.parquet

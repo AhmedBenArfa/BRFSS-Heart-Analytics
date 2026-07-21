@@ -7,7 +7,7 @@
       "précision": 0.23947694423327243,
       "rappel": 0.8153700788953582,
       "F1": 0.3702150601412932,
-      "durée (s)": 33.5
+      "durée (s)": 34.2
     },
     {
       "modèle": "Forêt aléatoire",
@@ -16,7 +16,7 @@
       "précision": 0.24865236483758238,
       "rappel": 0.7855492787670211,
       "F1": 0.37773426304955665,
-      "durée (s)": 45.3
+      "durée (s)": 46.2
     },
     {
       "modèle": "Régression logistique",
@@ -25,7 +25,7 @@
       "précision": 0.24629748681459235,
       "rappel": 0.7928210548590953,
       "F1": 0.3758332383803952,
-      "durée (s)": 6.9
+      "durée (s)": 7.0
     },
     {
       "modèle": "SVM linéaire",
@@ -34,7 +34,7 @@
       "précision": 0.546347726175044,
       "rappel": 0.12687022131736453,
       "F1": 0.20587668942483855,
-      "durée (s)": 12.9
+      "durée (s)": 13.3
     },
     {
       "modèle": "Arbre de décision",
@@ -43,7 +43,7 @@
       "précision": 0.2312035227677412,
       "rappel": 0.7993084217328453,
       "F1": 0.3586482291592611,
-      "durée (s)": 9.5
+      "durée (s)": 9.6
     },
     {
       "modèle": "kNN",
@@ -52,7 +52,7 @@
       "précision": 0.6024622853302313,
       "rappel": 0.030972166729425425,
       "F1": 0.058898462021035915,
-      "durée (s)": 165.2
+      "durée (s)": 165.9
     }
   ],
   "desequilibre": [
@@ -181,16 +181,16 @@
   "test": {
     "n": 50736,
     "n_positifs": 4779,
-    "roc_auc": 0.8503142212830181,
-    "pr_auc": 0.3712414698111999,
+    "roc_auc": 0.8506283767731184,
+    "pr_auc": 0.3710863126897659,
     "prevalence": 0.09419347209082309,
-    "seuil": 0.5762022137641907,
-    "rappel": 0.7501569365976145,
-    "precision": 0.26956914053688247,
-    "vrais_positifs": 3585,
-    "faux_negatifs": 1194,
-    "faux_positifs": 9714,
-    "vrais_negatifs": 36243
+    "seuil": 0.12684148102998732,
+    "rappel": 0.7535049173467253,
+    "precision": 0.2666617298578199,
+    "vrais_positifs": 3601,
+    "faux_negatifs": 1178,
+    "faux_positifs": 9903,
+    "vrais_negatifs": 36054
   },
   "shap_top": [
     {
@@ -236,6 +236,16 @@
   ],
   "modele_retenu": "XGBoost",
   "strategie_desequilibre": "Pondération",
+  "calibration": {
+    "methode": "isotonique",
+    "proba_moyenne_avant_pct": 34.60869216918945,
+    "proba_moyenne_apres_pct": 9.370869102587767,
+    "prevalence_reelle_pct": 9.419347209082309,
+    "roc_auc_avant": 0.8503142212830181,
+    "roc_auc_apres": 0.8506283767731184,
+    "pr_auc_avant": 0.3712414698111999,
+    "pr_auc_apres": 0.3710863126897659
+  },
   "reference_triviale": {
     "exactitude_pct": 90.5806527909177
   }

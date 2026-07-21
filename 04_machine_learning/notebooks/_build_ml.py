@@ -75,8 +75,10 @@ L'analyse exploratoire et le data mining ont établi des contraintes précises :
    rééchantillonnage SMOTE.
 6. **Diagnostic de surapprentissage / sous-apprentissage** : écart
    entraînement-validation, courbe d'apprentissage, courbe de validation.
-7. **Seuil de décision** choisi séparément, après la sélection du modèle.
-8. **Interprétation SHAP** du modèle retenu.
+7. **Calibration des probabilités**, pour qu'un pourcentage affiché corresponde
+   à une fréquence réelle.
+8. **Seuil de décision** choisi séparément, après la sélection du modèle.
+9. **Interprétation SHAP** du modèle retenu.
 
 ---
 """
@@ -154,7 +156,7 @@ md(
     """
 Les prévalences sont identiques à la troisième décimale : la stratification a
 fonctionné. **Le jeu de test est maintenant mis de côté** et ne sera utilisé qu'à
-la section 8, une seule fois, pour l'évaluation finale. Tout le travail de
+la section 9, une seule fois, pour l'évaluation finale. Tout le travail de
 sélection se fait par validation croisée sur le seul jeu d'entraînement.
 """
 )
@@ -787,10 +789,132 @@ demandent.
 
 md(
     """
-## 8. Évaluation finale sur le jeu de test
+## 8. Calibration des probabilités
 
-Le modèle retenu est réentraîné sur **l'intégralité** du jeu d'entraînement, puis
-évalué **une seule fois** sur le jeu de test — mis de côté depuis la section 1 et
+Un modèle peut très bien **classer** les individus tout en produisant des
+probabilités **fausses en niveau**. C'est précisément ce que provoque la
+pondération des classes retenue à la section 6 : en donnant dix fois plus de
+poids aux cas positifs, on apprend au modèle à raisonner comme si la maladie
+touchait la moitié de la population. Le classement reste juste, mais l'échelle
+est déformée vers le haut.
+
+Cette distinction est capitale ici. Pour comparer des modèles, seul le classement
+compte — le ROC-AUC est donc un critère valide. Mais dès qu'on **affiche un
+pourcentage à un utilisateur**, le niveau doit être exact : annoncer « 35 % de
+risque » à quelqu'un dont le risque réel est de 5 % n'est pas acceptable dans une
+application de santé.
+
+Vérifions l'ampleur du problème.
+"""
+)
+
+code(
+    """
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+from sklearn.metrics import average_precision_score
+
+pipeline_final.fit(X_train, y_train)
+proba_brute = pipeline_final.predict_proba(X_test)[:, 1]
+
+print(f"Prévalence réelle du jeu de test : {y_test.mean() * 100:.2f} %")
+print(f"Moyenne des probabilités prédites : {proba_brute.mean() * 100:.2f} %")
+print(f"Facteur de surestimation          : x{proba_brute.mean() / y_test.mean():.1f}")
+"""
+)
+
+md(
+    """
+Le diagnostic est net : le modèle surestime massivement le niveau de risque. Une
+personne à qui l'on annoncerait 35 % présente en réalité un risque bien moindre.
+
+### La correction : régression isotonique
+
+On applique une **calibration isotonique**, qui apprend une fonction croissante
+transformant les scores bruts en probabilités fidèles aux fréquences observées.
+Deux propriétés la rendent idéale ici :
+
+- Elle est **monotone** : elle ne modifie pas l'ordre des individus, donc le
+  ROC-AUC et tout le travail de sélection restent valides.
+- Elle est **non paramétrique** : elle n'impose aucune forme a priori à la
+  correction, contrairement à une calibration sigmoïde (Platt).
+
+La calibration est ajustée par validation croisée sur le jeu d'entraînement — le
+jeu de test reste intact.
+"""
+)
+
+code(
+    """
+modele_calibre = CalibratedClassifierCV(
+    clone(pipeline_final), method="isotonic", cv=config.NB_PLIS
+)
+modele_calibre.fit(X_train, y_train)
+
+proba_calibree = modele_calibre.predict_proba(X_test)[:, 1]
+
+comparaison_calib = pd.DataFrame({
+    "": ["ROC-AUC", "PR-AUC", "Probabilité moyenne (%)"],
+    "avant": [
+        roc_auc_score(y_test, proba_brute),
+        average_precision_score(y_test, proba_brute),
+        proba_brute.mean() * 100,
+    ],
+    "après": [
+        roc_auc_score(y_test, proba_calibree),
+        average_precision_score(y_test, proba_calibree),
+        proba_calibree.mean() * 100,
+    ],
+}).set_index("")
+comparaison_calib["réel"] = ["—", "—", f"{y_test.mean() * 100:.2f}"]
+comparaison_calib.round(4)
+"""
+)
+
+code(
+    """
+fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+for ax, proba, titre in [
+    (axes[0], proba_brute, "Avant calibration"),
+    (axes[1], proba_calibree, "Après calibration isotonique"),
+]:
+    frac, moy = calibration_curve(y_test, proba, n_bins=10, strategy="quantile")
+    ax.plot([0, max(moy)], [0, max(moy)], "--", c="grey", lw=1,
+            label="calibration parfaite")
+    ax.plot(moy, frac, "o-", color=ROUGE, lw=2, label="modèle")
+    ax.set_xlabel("Probabilité prédite")
+    ax.set_ylabel("Fréquence réellement observée")
+    ax.set_title(titre)
+    ax.legend()
+
+plt.tight_layout()
+enregistrer("08_calibration")
+plt.show()
+"""
+)
+
+md(
+    """
+Le contraste est frappant. À gauche, la courbe s'écarte largement sous la
+diagonale : à chaque niveau, la fréquence observée est très inférieure à la
+probabilité annoncée. À droite, elle se confond avec la diagonale — les
+probabilités correspondent désormais aux fréquences réelles.
+
+Et le tableau précédent confirme l'essentiel : **le ROC-AUC et le PR-AUC sont
+inchangés**. La calibration n'a rien coûté en pouvoir discriminant ; elle a
+seulement rendu les probabilités interprétables.
+
+> **C'est le modèle calibré qui sera déployé.** Le modèle brut est conservé pour
+> l'interprétation SHAP (section 11) : une transformation monotone ne change pas
+> la hiérarchie des contributions.
+"""
+)
+
+md(
+    """
+## 9. Évaluation finale sur le jeu de test
+
+Le modèle **calibré** est maintenant évalué **une seule fois** sur le jeu de test — mis de côté depuis la section 1 et
 jamais utilisé pour aucune décision. C'est ce qui rend cette estimation honnête.
 """
 )
@@ -802,8 +926,8 @@ from sklearn.metrics import (
     precision_recall_curve, roc_curve,
 )
 
-pipeline_final.fit(X_train, y_train)
-proba_test = pipeline_final.predict_proba(X_test)[:, 1]
+# Le modèle calibré (section 8) est celui qu'on évalue et qu'on déploiera.
+proba_test = proba_calibree
 
 roc_auc_test = roc_auc_score(y_test, proba_test)
 pr_auc_test = average_precision_score(y_test, proba_test)
@@ -856,7 +980,7 @@ modèle apporte.
 
 md(
     """
-## 9. Choix du seuil de décision
+## 10. Choix du seuil de décision
 
 **Sélectionner un modèle et choisir un seuil sont deux décisions distinctes.** Le
 modèle produit une probabilité continue ; le seuil transforme cette probabilité en
@@ -940,7 +1064,7 @@ d'une personne réellement exposée.
 
 md(
     """
-## 10. Interprétation : que regarde le modèle ?
+## 11. Interprétation : que regarde le modèle ?
 
 Un modèle performant mais opaque est difficile à défendre, surtout en santé. Les
 valeurs **SHAP** attribuent à chaque variable sa contribution à chaque prédiction,
@@ -1045,7 +1169,7 @@ Trois observations plus fines méritent d'être relevées :
 
 md(
     """
-## 11. Sérialisation du modèle
+## 12. Sérialisation du modèle
 
 On sauvegarde le **pipeline complet** — préprocesseur *et* modèle. L'application
 web appliquera ainsi exactement les mêmes transformations qu'à l'entraînement, ce
@@ -1061,11 +1185,17 @@ code(
 import joblib
 
 config.DOSSIER_MODELES.mkdir(parents=True, exist_ok=True)
-joblib.dump(pipeline_final, config.MODELE_FINAL)
+# Deux artefacts, deux usages :
+#   - le modèle CALIBRÉ produit les probabilités affichées à l'utilisateur ;
+#   - le pipeline BRUT sert à l'interprétation SHAP (l'explicateur a besoin
+#     d'accéder au préprocesseur et au modèle d'arbres sous-jacents).
+joblib.dump(modele_calibre, config.MODELE_FINAL)
+joblib.dump(pipeline_final, config.MODELE_BRUT)
 
 metadonnees = {
     "modele": nom_meilleur,
     "strategie_desequilibre": gagnante,
+    "calibration": "isotonique",
     "variables": config.VARIABLES,
     "seuil_decision": float(seuil),
     "rappel_cible": config.RAPPEL_CIBLE,
@@ -1085,7 +1215,8 @@ with open(config.METADONNEES, "w", encoding="utf-8") as f:
     json.dump(metadonnees, f, indent=2, ensure_ascii=False)
 
 taille = config.MODELE_FINAL.stat().st_size / 1024
-print(f"Modèle      : {config.MODELE_FINAL.name} ({taille:.0f} Ko)")
+print(f"Modèle calibré : {config.MODELE_FINAL.name} ({taille:.0f} Ko)")
+print(f"Modèle brut    : {config.MODELE_BRUT.name}  (interprétation SHAP)")
 print(f"Métadonnées : {config.METADONNEES.name}")
 print(json.dumps(metadonnees, indent=2, ensure_ascii=False)[:400])
 """
@@ -1153,6 +1284,16 @@ resultats_complets = {
     "shap_top": importance.head(10).to_dict(orient="records"),
     "modele_retenu": nom_meilleur,
     "strategie_desequilibre": gagnante,
+    "calibration": {
+        "methode": "isotonique",
+        "proba_moyenne_avant_pct": float(proba_brute.mean() * 100),
+        "proba_moyenne_apres_pct": float(proba_calibree.mean() * 100),
+        "prevalence_reelle_pct": float(y_test.mean() * 100),
+        "roc_auc_avant": float(roc_auc_score(y_test, proba_brute)),
+        "roc_auc_apres": float(roc_auc_score(y_test, proba_calibree)),
+        "pr_auc_avant": float(average_precision_score(y_test, proba_brute)),
+        "pr_auc_apres": float(average_precision_score(y_test, proba_calibree)),
+    },
     "reference_triviale": {
         "exactitude_pct": float(accuracy_score(y_test, pred_triviale) * 100),
     },
@@ -1172,7 +1313,7 @@ print(f"Résultats exportés : {chemin_resultats.name}")
 
 md(
     """
-## 12. Synthèse
+## 13. Synthèse
 
 ### Démarche
 
@@ -1185,6 +1326,7 @@ md(
 | Déséquilibre | Pondération *comparée* à SMOTE, pas supposée |
 | Seuil | Choisi après coup, sur un rappel cible de 75 % |
 | Diagnostic | Écart train/validation, courbes d'apprentissage et de validation |
+| Calibration | Isotonique, pour des probabilités affichables |
 | Interprétation | SHAP |
 
 ### Résultats

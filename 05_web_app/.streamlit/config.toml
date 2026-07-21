@@ -1,0 +1,13 @@
+# Thème de l'application — cohérent avec la palette du projet
+# (bleu marine pour les éléments neutres, rouge pour ce qui touche au risque).
+
+[theme]
+base = "light"
+primaryColor = "#C1443F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F4F6F9"
+textColor = "#1F2933"
+font = "sans serif"
+
+[server]
+maxUploadSize = 50

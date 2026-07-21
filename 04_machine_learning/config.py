@@ -15,7 +15,16 @@ BASE_DUCKDB = RACINE / "02_data_warehouse" / "heart.duckdb"
 TABLE = "analytical_base"
 
 DOSSIER_MODELES = Path(__file__).resolve().parent / "models"
+
+# Modèle déployé : calibré, ses probabilités sont directement affichables.
 MODELE_FINAL = DOSSIER_MODELES / "heart_model.joblib"
+
+# Pipeline brut (non calibré), conservé pour l'interprétation SHAP :
+# l'explicateur a besoin d'accéder au préprocesseur et au modèle d'arbres.
+# La calibration étant monotone, elle ne change pas la hiérarchie des
+# contributions — expliquer le modèle brut reste donc valide.
+MODELE_BRUT = DOSSIER_MODELES / "heart_model_base.joblib"
+
 METADONNEES = DOSSIER_MODELES / "metadata.json"
 
 # ---------------------------------------------------------------------------

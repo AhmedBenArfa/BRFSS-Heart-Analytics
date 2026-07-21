@@ -521,7 +521,7 @@ def construire(meta: dict, res: dict) -> Rapport:
     )
     pdf.puce(
         "**Il sépare proprement deux décisions distinctes.** Choisir un modèle et "
-        "choisir un seuil sont deux questions différentes (voir § 10.1). Une métrique "
+        "choisir un seuil sont deux questions différentes (voir § 11.1). Une métrique "
         "dépendante du seuil, comme le F1 ou le rappel, mêlerait les deux : on "
         "sélectionnerait un modèle sur la base d'un seuil arbitraire de 0,5, qui "
         "n'a aucune pertinence en contexte déséquilibré."
@@ -815,8 +815,84 @@ GridSearchCV(
             couleur=VERT,
         )
 
-    # ================= 10. Évaluation finale =================
-    pdf.titre1("10. Évaluation finale et choix du seuil")
+    # ================= 10. Calibration =================
+    cal = res["calibration"]
+    pdf.titre1("10. Calibration des probabilités")
+    pdf.texte(
+        "Un modèle peut parfaitement **classer** les individus tout en produisant "
+        "des probabilités **fausses en niveau**. C'est exactement l'effet de la "
+        "pondération des classes retenue au chapitre 8 : en accordant dix fois plus "
+        "de poids aux cas positifs, on apprend au modèle à raisonner comme si la "
+        "maladie touchait la moitié de la population. Le classement reste juste, "
+        "l'échelle est déformée vers le haut."
+    )
+    pdf.encadre(
+        "Pourquoi cette distinction est décisive",
+        "Pour **comparer des modèles**, seul le classement compte : le ROC-AUC est "
+        "donc un critère valide, et tout le travail des chapitres précédents reste "
+        "pertinent. Mais dès qu'on **affiche un pourcentage à un utilisateur**, le "
+        "niveau doit être exact. Annoncer « 35 % de risque » à une personne dont le "
+        "risque réel est de 5 % serait trompeur — inacceptable pour une application "
+        "de santé.",
+    )
+    pdf.titre2("10.1 L'ampleur du problème")
+    pdf.texte(
+        f"Sur le jeu de test, la moyenne des probabilités prédites par le modèle "
+        f"brut atteint **{cal['proba_moyenne_avant_pct']:.2f} %**, alors que la "
+        f"prévalence réelle n'est que de **{cal['prevalence_reelle_pct']:.2f} %** — "
+        f"une surestimation d'un facteur "
+        f"{cal['proba_moyenne_avant_pct'] / cal['prevalence_reelle_pct']:.1f}."
+    )
+    pdf.titre2("10.2 La correction : régression isotonique")
+    pdf.texte(
+        "On applique une **calibration isotonique**, qui apprend une fonction "
+        "croissante transformant les scores bruts en probabilités fidèles aux "
+        "fréquences observées. Deux propriétés la rendent adaptée ici. Elle est "
+        "**monotone** : elle ne modifie pas l'ordre des individus, donc le ROC-AUC "
+        "et toute la sélection restent valides. Elle est **non paramétrique** : "
+        "elle n'impose aucune forme a priori à la correction, contrairement à une "
+        "calibration sigmoïde. L'ajustement se fait par validation croisée sur le "
+        "seul jeu d'entraînement."
+    )
+    pdf.tableau(
+        ["Mesure", "Avant", "Après", "Réel"],
+        [
+            ["ROC-AUC", f"{cal['roc_auc_avant']:.4f}",
+             f"{cal['roc_auc_apres']:.4f}", "—"],
+            ["PR-AUC", f"{cal['pr_auc_avant']:.4f}",
+             f"{cal['pr_auc_apres']:.4f}", "—"],
+            ["Probabilité moyenne (%)", f"{cal['proba_moyenne_avant_pct']:.2f}",
+             f"{cal['proba_moyenne_apres_pct']:.2f}",
+             f"{cal['prevalence_reelle_pct']:.2f}"],
+        ],
+        [60, 35, 35, 35],
+        ["L", "R", "R", "R"],
+    )
+    pdf.figure(
+        "08_calibration",
+        "Courbes de calibration avant et après correction isotonique",
+        largeur=165,
+    )
+    pdf.encadre(
+        "Une correction sans contrepartie",
+        f"Le ROC-AUC passe de {cal['roc_auc_avant']:.4f} à "
+        f"{cal['roc_auc_apres']:.4f} et le PR-AUC reste inchangé : la calibration "
+        f"n'a rien coûté en pouvoir discriminant. En revanche, la probabilité "
+        f"moyenne tombe de {cal['proba_moyenne_avant_pct']:.2f} % à "
+        f"{cal['proba_moyenne_apres_pct']:.2f} %, contre "
+        f"{cal['prevalence_reelle_pct']:.2f} % réellement observés. Les "
+        "probabilités sont désormais interprétables telles quelles. Le seuil de "
+        "décision a été recalculé sur cette nouvelle échelle.",
+        couleur=VERT,
+    )
+    pdf.texte(
+        "C'est le **modèle calibré** qui est déployé. Le pipeline brut reste "
+        "conservé pour l'interprétation SHAP : une transformation monotone ne "
+        "change pas la hiérarchie des contributions."
+    )
+
+    # ================= 11. Évaluation finale =================
+    pdf.titre1("11. Évaluation finale et choix du seuil")
     pdf.texte(
         "Le modèle retenu est réentraîné sur l'intégralité du jeu d'entraînement, "
         "puis évalué une seule fois sur le jeu de test, mis sous scellés depuis le "
@@ -844,7 +920,7 @@ GridSearchCV(
         f"de {meta['prevalence_entrainement']:.4f} : l'apport du modèle est net, "
         "d'un facteur proche de quatre."
     )
-    pdf.titre2("10.1 Le seuil est une décision distincte du choix du modèle")
+    pdf.titre2("11.1 Le seuil est une décision distincte du choix du modèle")
     pdf.texte(
         "Le modèle produit une probabilité continue ; le seuil la transforme en "
         "décision binaire. Le seuil par défaut de 0,5 n'a aucune raison d'être "
@@ -880,7 +956,7 @@ GridSearchCV(
     )
 
     # ================= 11. SHAP =================
-    pdf.titre1("11. Interprétation par SHAP")
+    pdf.titre1("12. Interprétation par SHAP")
     pdf.texte(
         "Un modèle performant mais opaque est difficile à défendre, a fortiori en "
         "santé. Les valeurs SHAP attribuent à chaque variable sa contribution à "
@@ -919,7 +995,7 @@ GridSearchCV(
     )
 
     # ================= 12. Sérialisation =================
-    pdf.titre1("12. Sérialisation et mise à disposition")
+    pdf.titre1("13. Sérialisation et mise à disposition")
     pdf.texte(
         "C'est le **pipeline complet** qui est sauvegardé — préprocesseur et modèle "
         "réunis dans un seul objet. L'application web appliquera ainsi exactement "
@@ -947,8 +1023,8 @@ joblib.dump(pipeline_final, "models/heart_model.joblib")
     )
 
     # ================= 13. Synthèse =================
-    pdf.titre1("13. Synthèse et limites")
-    pdf.titre2("13.1 Démarche")
+    pdf.titre1("14. Synthèse et limites")
+    pdf.titre2("14.1 Démarche")
     pdf.tableau(
         ["Étape", "Choix retenu"],
         [
@@ -959,13 +1035,14 @@ joblib.dump(pipeline_final, "models/heart_model.joblib")
             ["Sélection", "ROC-AUC, PR-AUC en arbitre"],
             ["Déséquilibre", f"{meta['strategie_desequilibre']} (comparée à l'autre)"],
             ["Diagnostic", "Écart train/validation, deux courbes"],
+            ["Calibration", "Isotonique — probabilités affichables"],
             ["Seuil", f"Fixé après coup, rappel cible {meta['rappel_cible']:.0%}"],
             ["Interprétation", "SHAP"],
         ],
         [45, 120],
         ["L", "L"],
     )
-    pdf.titre2("13.2 Résultats")
+    pdf.titre2("14.2 Résultats")
     pdf.puce(
         f"Modèle retenu : **{meta['modele']}**, ROC-AUC de {perf['roc_auc']:.4f} "
         f"et PR-AUC de {perf['pr_auc']:.4f} sur le jeu de test."
@@ -982,7 +1059,7 @@ joblib.dump(pipeline_final, "models/heart_model.joblib")
         "Le modèle retenu ne surapprend pas : l'écart entraînement-validation reste "
         "très faible."
     )
-    pdf.titre2("13.3 Limites assumées")
+    pdf.titre2("14.3 Limites assumées")
     pdf.puce(
         "**Associations transversales** : aucune causalité, aucune prédiction "
         "temporelle."

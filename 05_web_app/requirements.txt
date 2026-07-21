@@ -1,0 +1,8 @@
+# Dépendances de l'application web (déploiement Streamlit Community Cloud)
+streamlit>=1.57
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+xgboost>=2.0
+shap>=0.45
+joblib>=1.4
