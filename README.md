@@ -99,7 +99,7 @@ python explore_warehouse.py fact_respondent  # aperçu
 | 04 — Machine Learning | 🔜 À faire |
 | 08 — Data Mining | 🔜 À faire |
 | 05 — Application web | 🔜 À faire |
-| 06 — Rapport | 🚧 Documentation ETL & EDA générée |
+| 06 — Rapport | 🚧 Docs techniques ETL/EDA et Entrepôt/Power BI générées |
 | 07 — Présentation | 🔜 À faire |
 
 ## Livrables
