@@ -1,0 +1,67 @@
+{
+  "n_population_totale": 253680,
+  "prevalence_reelle_pct": 9.42,
+  "risque_moyen_estime_pct": 9.41,
+  "seuil_decision": 0.12684148102998732,
+  "profils": [
+    {
+      "id": 0,
+      "nom": "Jeunes actifs en bonne santé",
+      "effectif": 113279,
+      "part_pct": 44.7,
+      "taux_maladie_pct": 1.6,
+      "age_moyen_code": 6.6,
+      "imc_moyen": 26.5,
+      "sans_couverture_pct": 0.0
+    },
+    {
+      "id": 1,
+      "nom": "Adultes non assurés",
+      "effectif": 12269,
+      "part_pct": 4.8,
+      "taux_maladie_pct": 6.6,
+      "age_moyen_code": 6.1,
+      "imc_moyen": 28.8,
+      "sans_couverture_pct": 100.0
+    },
+    {
+      "id": 2,
+      "nom": "Seniors autonomes",
+      "effectif": 87922,
+      "part_pct": 34.7,
+      "taux_maladie_pct": 13.0,
+      "age_moyen_code": 9.7,
+      "imc_moyen": 29.3,
+      "sans_couverture_pct": 0.0
+    },
+    {
+      "id": 3,
+      "nom": "Seniors multi-morbides fragiles",
+      "effectif": 40210,
+      "part_pct": 15.9,
+      "taux_maladie_pct": 24.5,
+      "age_moyen_code": 9.1,
+      "imc_moyen": 31.5,
+      "sans_couverture_pct": 0.4
+    }
+  ],
+  "risque_moyen_par_age": {
+    "1": 0.43,
+    "2": 0.61,
+    "3": 1.04,
+    "4": 1.37,
+    "5": 2.2,
+    "6": 3.39,
+    "7": 5.41,
+    "8": 7.63,
+    "9": 10.16,
+    "10": 12.94,
+    "11": 16.76,
+    "12": 19.14,
+    "13": 23.85
+  },
+  "risque_moyen_par_sexe": {
+    "0": 7.17,
+    "1": 12.25
+  }
+}

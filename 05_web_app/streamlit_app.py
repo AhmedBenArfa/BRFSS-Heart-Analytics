@@ -22,6 +22,11 @@ pages = [
         default=True,
     ),
     st.Page(
+        "app_pages/population.py",
+        title="Tableau de bord",
+        icon=":material/bar_chart:",
+    ),
+    st.Page(
         "app_pages/lot.py",
         title="Scoring par lot",
         icon=":material/table_view:",
@@ -30,6 +35,11 @@ pages = [
         "app_pages/methodologie.py",
         title="Méthodologie",
         icon=":material/science:",
+    ),
+    st.Page(
+        "app_pages/assistant.py",
+        title="Assistant",
+        icon=":material/robot_2:",
     ),
 ]
 

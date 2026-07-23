@@ -3,7 +3,7 @@
 import pandas as pd
 import streamlit as st
 
-from utils import codebook, format_fr
+from utils import codebook, format_fr, rapport_pdf
 from utils.modele import (
     PREVALENCE_REFERENCE,
     charger_metadonnees,
@@ -133,15 +133,40 @@ with col_droite:
             height=260,
         )
 
-# --- Export ---------------------------------------------------------------
+# --- Export : CSV détaillé + synthèse PDF ---------------------------------
 
-st.download_button(
-    "Télécharger les résultats",
+# Synthèse PDF (fonctionnalité F) : agrégats du lot pour un rapport partageable.
+apercu_pdf = resultats.nlargest(8, "risque_estime")[
+    ["risque_estime", "age_group", "gen_hlth", "high_bp"]
+].copy()
+apercu_pdf["risque_estime"] = (apercu_pdf["risque_estime"] * 100).map(
+    lambda v: f"{v:.1f} %".replace(".", ",")
+)
+apercu_pdf["age_group"] = apercu_pdf["age_group"].map(codebook.AGE)
+apercu_pdf["gen_hlth"] = apercu_pdf["gen_hlth"].map(codebook.SANTE_GENERALE)
+apercu_pdf["high_bp"] = apercu_pdf["high_bp"].map({0: "Non", 1: "Oui"})
+apercu_pdf.columns = ["Risque", "Age", "Sante", "HTA"]
+
+pdf_lot = rapport_pdf.synthese_lot(
+    nb_total=len(resultats),
+    nb_signales=nb_signales,
+    risque_moyen=float(resultats["risque_estime"].mean()),
+    seuil=seuil,
+    distribution=tranches,
+    top_profils=apercu_pdf,
+)
+
+col_csv, col_pdf = st.columns(2)
+col_csv.download_button(
+    "Télécharger les résultats (CSV)",
     resultats.to_csv(index=False).encode("utf-8"),
-    "profils_scores.csv",
-    "text/csv",
-    type="primary",
-    icon=":material/download:",
+    "profils_scores.csv", "text/csv",
+    type="primary", icon=":material/download:",
+)
+col_pdf.download_button(
+    "Télécharger la synthèse (PDF)",
+    pdf_lot, "synthese_scoring.pdf", "application/pdf",
+    icon=":material/picture_as_pdf:",
 )
 
 with st.expander("Voir les résultats complets"):

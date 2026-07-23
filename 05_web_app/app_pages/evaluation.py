@@ -1,13 +1,19 @@
-"""Page d'évaluation individuelle du risque cardiovasculaire."""
+"""Page d'évaluation individuelle du risque cardiovasculaire.
+
+Le résultat est conservé dans st.session_state : il persiste ainsi lorsque
+l'utilisateur télécharge le bilan PDF ou explore le simulateur, actions qui
+provoquent un rerun sans nouvelle soumission du formulaire.
+"""
 
 import pandas as pd
 import streamlit as st
 
-from utils import codebook, format_fr
+from utils import codebook, conseils, format_fr, reference, simulateur
+from utils import rapport_pdf
 from utils.modele import (
     PREVALENCE_REFERENCE,
-    contributions,
     charger_metadonnees,
+    contributions,
     estimer,
     niveau_de_risque,
 )
@@ -20,8 +26,6 @@ st.caption(
 )
 
 # --- Formulaire -----------------------------------------------------------
-# st.form regroupe les saisies : l'application ne se recalcule qu'à la
-# validation, au lieu de réagir à chaque champ modifié.
 
 with st.form("profil"):
     st.markdown("##### Profil socio-démographique")
@@ -71,42 +75,50 @@ with st.form("profil"):
 
     valide = st.form_submit_button("Estimer le risque", type="primary")
 
-# --- Résultat -------------------------------------------------------------
+# --- Calcul à la soumission, stocké en session ----------------------------
 
-if not valide:
+if valide:
+    profil = pd.DataFrame([{
+        "bmi": imc, "ment_hlth_days": jours_mental,
+        "phys_hlth_days": jours_physique, "gen_hlth": sante, "age_group": age,
+        "education": education, "income": revenu, "diabetes": diabete,
+        "high_bp": int(hypertension), "high_chol": int(cholesterol),
+        "chol_check": int(depistage), "smoker": int(fumeur), "stroke": int(avc),
+        "phys_activity": int(activite), "fruits": int(fruits),
+        "veggies": int(legumes), "hvy_alcohol": int(alcool),
+        "any_healthcare": int(assurance), "no_doc_cost": int(renoncement),
+        "diff_walk": int(marche), "sex": sexe,
+    }])
+    probabilite = float(estimer(profil).iloc[0])
+
+    st.session_state["eval_resultat"] = {
+        "profil": profil,
+        "probabilite": probabilite,
+        "age": age, "sexe": sexe, "imc": imc, "sante": sante,
+    }
+    # Historique (fonctionnalité G) : on empile les estimations successives.
+    historique = st.session_state.setdefault("eval_historique", [])
+    historique.append({
+        "Âge": codebook.AGE[age], "Sexe": codebook.SEXE[sexe],
+        "IMC": imc, "Santé": codebook.SANTE_GENERALE[sante],
+        "Risque": probabilite,
+    })
+
+if "eval_resultat" not in st.session_state:
     st.info(
         "Complétez le formulaire puis cliquez sur **Estimer le risque**.",
         icon=":material/info:",
     )
     st.stop()
 
-profil = pd.DataFrame([{
-    "bmi": imc,
-    "ment_hlth_days": jours_mental,
-    "phys_hlth_days": jours_physique,
-    "gen_hlth": sante,
-    "age_group": age,
-    "education": education,
-    "income": revenu,
-    "diabetes": diabete,
-    "high_bp": int(hypertension),
-    "high_chol": int(cholesterol),
-    "chol_check": int(depistage),
-    "smoker": int(fumeur),
-    "stroke": int(avc),
-    "phys_activity": int(activite),
-    "fruits": int(fruits),
-    "veggies": int(legumes),
-    "hvy_alcohol": int(alcool),
-    "any_healthcare": int(assurance),
-    "no_doc_cost": int(renoncement),
-    "diff_walk": int(marche),
-    "sex": sexe,
-}])
+# --- Restitution du dernier résultat --------------------------------------
 
-probabilite = float(estimer(profil).iloc[0])
+res = st.session_state["eval_resultat"]
+profil = res["profil"]
+probabilite = res["probabilite"]
 niveau, couleur = niveau_de_risque(probabilite)
 ratio = probabilite / PREVALENCE_REFERENCE
+position = reference.positionner(probabilite, res["age"], res["sexe"])
 
 st.divider()
 st.markdown("### Résultat de l'estimation")
@@ -115,12 +127,17 @@ with st.container(horizontal=True):
     st.metric("Risque estimé", format_fr.pourcent(probabilite), border=True)
     st.metric("Niveau", niveau, border=True)
     st.metric(
-        "Comparaison",
-        f"× {format_fr.nombre(ratio)}",
+        "Comparaison", f"× {format_fr.nombre(ratio)}",
         delta=format_fr.points(probabilite - PREVALENCE_REFERENCE),
         border=True,
         help="Rapport au risque moyen de la population de référence (9,4 %)",
     )
+    if position:
+        st.metric(
+            "Position", f"{position['percentile']:.0f}e centile", border=True,
+            help="Parmi les personnes de même âge et sexe : part dont le risque "
+                 "estimé est inférieur au vôtre",
+        )
 
 st.progress(min(probabilite, 1.0))
 st.markdown(
@@ -130,34 +147,126 @@ st.markdown(
     f"({format_fr.pourcent(PREVALENCE_REFERENCE)})."
 )
 
-# --- Facteurs contributifs ------------------------------------------------
+# --- D : positionnement dans la population --------------------------------
+
+if position:
+    moyenne_pairs = position["moyenne_pairs"]
+    ecart = probabilite - moyenne_pairs
+    comparatif = (
+        "supérieur à" if ecart > 0.005
+        else "inférieur à" if ecart < -0.005 else "comparable à"
+    )
+    st.markdown(
+        f"Votre risque est **{comparatif}** la moyenne des personnes de même âge "
+        f"et sexe ({format_fr.pourcent(moyenne_pairs)}). Vous vous situez au "
+        f"**{position['percentile']:.0f}ᵉ centile** de ce groupe : "
+        f"{position['percentile']:.0f} % d'entre elles ont un risque estimé "
+        f"inférieur au vôtre."
+    )
+
+# --- Contributions (facteurs) ---------------------------------------------
 
 shap_valeurs = contributions(profil)
-
 if not shap_valeurs.empty:
     st.markdown("### Ce qui pèse dans cette estimation")
     st.caption(
         "Contribution de chaque variable à l'écart par rapport au risque moyen. "
         "En rouge, ce qui augmente le risque ; en bleu, ce qui le diminue."
     )
-
-    top = shap_valeurs.reindex(shap_valeurs.abs().sort_values(ascending=False).index)
-    top = top.head(8).sort_values()
-
-    # Deux séries distinctes pour que la couleur porte du sens : le rouge
-    # signale ce qui pousse le risque à la hausse, le bleu ce qui l'atténue.
+    top = shap_valeurs.reindex(
+        shap_valeurs.abs().sort_values(ascending=False).index
+    ).head(8).sort_values()
     tableau = pd.DataFrame({
         "Facteur": [codebook.libelle(v) for v in top.index],
         "Augmente le risque": [v if v > 0 else None for v in top.values],
         "Diminue le risque": [v if v <= 0 else None for v in top.values],
     }).set_index("Facteur")
+    st.bar_chart(tableau, horizontal=True, color=["#C1443F", "#2E5C8A"],
+                 height=300)
 
-    st.bar_chart(
-        tableau,
-        horizontal=True,
-        color=["#C1443F", "#2E5C8A"],
-        height=300,
+# --- B : simulateur « et si… » --------------------------------------------
+
+scenarios = simulateur.scenarios(profil, probabilite)
+if scenarios:
+    st.markdown("### Simulateur : et si… ?")
+    st.caption(
+        "Impact estimé de changements sur lesquels il est possible d'agir. "
+        "L'âge et le sexe, non modifiables, ne figurent pas ici."
     )
+
+    combine = simulateur.scenario_combine(profil)
+    if combine and (probabilite - combine["risque"]) > 0.005:
+        gain = probabilite - combine["risque"]
+        st.success(
+            f"En cumulant l'ensemble de ces changements, le risque estimé "
+            f"passerait de **{format_fr.pourcent(probabilite)}** à "
+            f"**{format_fr.pourcent(combine['risque'])}** — une baisse de "
+            f"**{format_fr.points(-gain).replace('-', '')}**.",
+            icon=":material/trending_down:",
+        )
+
+    for s in scenarios:
+        gain = -s["delta"]
+        cols = st.columns([5, 2, 2])
+        cols[0].markdown(f"{s['icone']} {s['libelle']}")
+        cols[1].metric("Risque", format_fr.pourcent(s["risque"]),
+                       label_visibility="collapsed")
+        cols[2].markdown(
+            f":green[**−{format_fr.points(gain).replace('+', '').replace('-', '')}**]"
+            if gain > 0.0005 else "_effet négligeable_"
+        )
+
+# --- C : conseils ---------------------------------------------------------
+
+liste_conseils = conseils.generer(profil)
+st.markdown("### Conseils de prévention")
+for icone, titre, message in liste_conseils:
+    with st.container(border=True):
+        st.markdown(f"**{icone} {titre}**")
+        st.markdown(message)
+
+# --- A : téléchargement du bilan PDF --------------------------------------
+
+resume_profil = {
+    "Tranche d'âge": codebook.AGE[res["age"]],
+    "Sexe": codebook.SEXE[res["sexe"]],
+    "Indice de masse corporelle": format_fr.nombre(res["imc"]),
+    "Santé perçue": codebook.SANTE_GENERALE[res["sante"]],
+}
+pdf_octets = rapport_pdf.bilan_individuel(
+    resume_profil, probabilite, niveau, ratio, position, shap_valeurs,
+    liste_conseils, codebook.libelle,
+)
+st.download_button(
+    "Télécharger le bilan (PDF)",
+    pdf_octets,
+    "bilan_risque_cardiaque.pdf",
+    "application/pdf",
+    type="primary",
+    icon=":material/download:",
+)
+
+# --- G : historique de session --------------------------------------------
+
+historique = st.session_state.get("eval_historique", [])
+if len(historique) > 1:
+    with st.expander(
+        f":material/history: Comparer mes {len(historique)} estimations"
+    ):
+        hist = pd.DataFrame(historique)
+        hist["Risque"] = hist["Risque"] * 100  # la barre formate la valeur brute
+        st.dataframe(
+            hist, hide_index=True,
+            column_config={
+                "Risque": st.column_config.ProgressColumn(
+                    "Risque estimé", format="%.1f %%",
+                    min_value=0.0, max_value=100.0,
+                ),
+            },
+        )
+        if st.button("Effacer l'historique", icon=":material/delete:"):
+            st.session_state["eval_historique"] = []
+            st.rerun()
 
 st.divider()
 st.warning(
